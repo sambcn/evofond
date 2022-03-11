@@ -2,6 +2,7 @@
    sphinx-quickstart on Tue Mar  1 11:24:39 2022.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
+
 Documentation pour le logiciel evofond
 ======================================
 
