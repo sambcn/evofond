@@ -35,6 +35,19 @@ def get_matrix_max(matrix):
     except IndexError as e:
         raise IndexError(f"Matrix must have at least one element. {e}")
 
+def time_to_string(t):
+    """return a string to print a given time t in seconds with the format Ah Bm Cs"""
+    hours = int(t) // 3600
+    minutes = (int(t) - 3600*hours) // 60
+    seconds = t%60
+    if hours == 0:
+        if minutes == 0:
+            return f"{seconds:.2f}s"
+        else:
+            return f"{minutes}min {seconds:.2f}s"
+    else:
+        return f"{hours}h {minutes}min {seconds:.2f}s"
+
 def read_hecras_data(filename):
     """
     returns two lists x, y which can be plot, by reading the filename which must be like :

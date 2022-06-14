@@ -4,12 +4,12 @@ import numpy as np
 
 class TrapezoidalSection(IrregularSection):
 
-    def __init__(self, x, z, b, s, z_min=None, y_max=None , up_section=None, down_section=None, granulometry=None, manning=0.013):
+    def __init__(self, x, z, b, s, z_min=None, y_max=None , up_section=None, down_section=None, granulometry=None, manning=0.013, K_over_tauc=None, tauc_over_rho=None):
         self.__b = b
         self.__s = s
         self.__y_max = 1000 if y_max==None or y_max <= 0 else y_max # MAX_INT
         points = [(0, self.__y_max), (s*self.__y_max,0), (s*self.__y_max+b, 0), (2*s*self.__y_max+b, self.__y_max)]
-        super().__init__(points, x, z, z_min=z_min, up_section=up_section, down_section=down_section, granulometry=granulometry, manning=manning)
+        super().__init__(points, x, z, z_min=z_min, up_section=up_section, down_section=down_section, granulometry=granulometry, manning=manning, K_over_tauc=K_over_tauc, tauc_over_rho=tauc_over_rho)
         
     def interp_as_up_section(self, other_section, x=None):
         interpolated_section = super().interp(self, other_section, x=x)
@@ -29,7 +29,7 @@ class TrapezoidalSection(IrregularSection):
 
     def copy(self):
         """return a safe copy of this section"""
-        return TrapezoidalSection(self.get_x(), self.get_z(), self.get_b(), self.get_s(), z_min=self.get_z_min(), up_section=self.get_up_section(), down_section=self.get_down_section(), granulometry=self.get_granulometry(), manning=self.get_manning())
+        return TrapezoidalSection(self.get_x(), self.get_z(), self.get_b(), self.get_s(), z_min=self.get_z_min(), y_max=self.get_y_max(), up_section=self.get_up_section(), down_section=self.get_down_section(), granulometry=self.get_granulometry(), manning=self.get_manning())
 
     def update_bottom(self, Q, y, y_next, Qs_in, dt, law):
         raise(NotImplementedError("solid transport is not well defined for trapezoidal sections."))
@@ -83,6 +83,9 @@ class TrapezoidalSection(IrregularSection):
     
     def get_dP(self, y, wet_points=None):
         return 2*np.sqrt(A+self.__s**2)
+
+    def __get_A_for_coussot(self, y):
+        return 1.93 - 0.6 * np.arctan((0.4*y/self.get_b(0))**20)
     
     def get_s(self):
         return self.__s
