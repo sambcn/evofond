@@ -48,7 +48,7 @@ def main():
     # profile = Profile.import_profile("./results/hecras_comp/hecras_mix.pkl")
     # profile = Profile.import_profile("./results/hecras_comp/hecras_mild_contraction.pkl")
     # profile = Profile.import_profile("./results/hecras_comp/hecras_steep_contraction.pkl")
-    profile = Profile.import_profile("./results/hecras_comp/hecras_drops.pkl")
+    # profile = Profile.import_profile("./results/hecras_comp/hecras_drops.pkl")
     #############################################################################################
 
     ############################################################################################## 
@@ -149,15 +149,15 @@ def main():
     # granulometries = [granulometry, granulometry, granulometry, granulometry, granulometry, granulometry, granulometry]
     # profile = build_profile([0, 201, 401, 601, 801, 1001, 1201], [200, 400, 600, 800, 1000, 1200, 1400], 10, widths, slopes, granulometries,height_drops=height_drops, manning=0.013, z_min_diff=0)
     ############################################################################################## drops streak reduction
-    # granulometry = Granulometry(dm=0.065, d30=0.03, d50=0.03, d90=0.065, d84tb=0.04, d84bs=0.08, Gr=2.6)
-    # widths = [10, 10, 6, 6, 10]
-    # slopes = [0.2, 0.002, 0.002, 0.001, 0.001]
-    # height_drops = [0, -6, 6, 6]
-    # granulometries = [granulometry, granulometry, granulometry, granulometry, granulometry]
-    # profile = build_profile([0, 101, 201, 401, 601], [100, 200, 400, 600, 800], 10, widths, slopes, granulometries,height_drops=height_drops, manning=0.013, z_min_diff=2)
+    granulometry = Granulometry(dm=0.065, d30=0.03, d50=0.03, d90=0.065, d84tb=0.04, d84bs=0.08, Gr=2.6)
+    widths = [10, 10, 6, 6, 10]
+    slopes = [0.2, 0.002, 0.002, 0.001, 0.001]
+    height_drops = [0, -6, 6, 6]
+    granulometries = [granulometry, granulometry, granulometry, granulometry, granulometry]
+    profile = build_profile([0, 101, 201, 401, 601], [100, 200, 400, 600, 800], 10, widths, slopes, granulometries,height_drops=height_drops, manning=0.013, z_min_diff=2)
     ############################################################################################## Mix
     # granulometry = Granulometry(dm=0.065, d30=0.03, d50=0.03, d90=0.065, d84tb=0.04, d84bs=0.08, Gr=2.6)
-    # widths = [10, 10, 6, 6, 6, 6, 10]
+    # widths = [10, 10, 5, 5, 5, 5, 10]
     # slopes = [0.2, 0.001, 0.001, 0.05, 0.001, 0.01, 0.01]
     # height_drops = [0, 0, 0, 2, -8, 0]
     # granulometries = [granulometry, granulometry, granulometry, granulometry, granulometry, granulometry, granulometry]
@@ -176,14 +176,14 @@ def main():
     # profile = Profile.import_profile("./results/instability_amplification.pkl")
     ##############################################################################################
 
-    # x_compare, y_compare = read_hecras_data("../../data_hecras/new/drops.txt")
+    # x_compare, y_compare = read_hecras_data("../../data_hecras/new/steep_contraction.txt")
     # x_compare, y_compare = reverse_data(x_compare, y_compare)
     # print([(s.get_x(), s.get_z(), s.get_b()) for s in profile.get_section_list()])
 
     # profile.complete(10)
     # Q_list = [30 for _ in range(profile.get_nb_section())]
-    Q = 20 # 10/3600
-    y_list = profile.compute_depth_bis(Q, plot=True, hydraulic_jump_analysis=False, method="RungeKutta", friction_law="Manning-Strickler", compare=None)
+    # Q = 20 # 10/3600
+    # y_list = profile.compute_depth_bis(Q, plot=True, hydraulic_jump_analysis=False, method="RungeKutta", friction_law="Manning-Strickler", compare=(x_compare, y_compare))
     # y_list = profile.compute_depth(Q, plot=True, hydraulic_jump_analysis=True, compare=(x_compare, y_compare), method="ImprovedEuler", friction_law="Manning-Strickler") 
     # profile.plot(y=y_list)
     # profile.export("./hecras_steep_contraction.pkl")
@@ -200,16 +200,16 @@ def main():
     #     y_list = profile.compute_depth_bis(Q, plot=False, hydraulic_jump_analysis=False, method="ImprovedEuler")
     #     # y_list = profile.compute_depth(Q, plot=False, hydraulic_jump_analysis=True, compare=None, method="ImprovedEuler")
 
-    # dt = 10
-    # t = np.arange(0, 1*60*60+dt, dt)
-    # Qmax = 20
-    # tm = 0.5*60*60
-    # alpha = 3
-    # Qbase = 5
-    # hydrogram = hydrogrammeLavabre(Qmax,tm,alpha,Qbase,t)
-    # law = Lefort1991()
-    # ani = profile.compute_event_bis(hydrogram, t, law, backup=False, debug=False, method="ImprovedEuler", friction_law="Ferguson")
-    # return ani
+    dt = 10
+    t = np.arange(0, 6*60*60+dt, dt)
+    Qmax = 60
+    tm = 2*60*60
+    alpha = 2
+    Qbase = 30
+    hydrogram = hydrogrammeLavabre(Qmax,tm,alpha,Qbase,t)
+    law = Rickenmann1991()
+    ani = profile.compute_event_bis(hydrogram, t, law, backup=True, debug=False, method="ImprovedEuler", friction_law="Ferguson", cfl=20)
+    return ani
 
     ############################################################################################## lave torrentielle
     # # fixed parameters
