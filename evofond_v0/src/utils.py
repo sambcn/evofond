@@ -12,6 +12,7 @@ def hydrogrammeLavabre(Qmax,tm,alpha,Qbase,t):
     returns water discharge array matching t such that there is a maximum Qmax reached at tm by a alpha degree curve.
     It tends to Qbase as t tends to 0 or +inf.
     """
+    Qbase = max(Qbase, 0.01)
     if alpha < 0:
         print(f"ERROR : while building lavabre hydrogram, alpha cannot be negative ({alpha})")
         raise ValueError()

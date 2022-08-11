@@ -8,6 +8,7 @@ import datetime as dt
 from src.utils import parse_datafile, write_datafile, inter_xy, hydrogrammeLavabre
 from src.rectangularSection import RectangularSection
 from src.trapezoidalSection import TrapezoidalSection
+from src.perf import Performance
 from src.profile import Profile
 from src.granulometry import Granulometry
 from src.sedimentTransport.lefortsogreah1991 import LefortSogreah1991
@@ -28,7 +29,7 @@ def run_back(args, hydrau=None):
     granulometry_list = []
     for path in granulometry_files:
         granulo = json.load(open(path, 'r'))
-        granulometry_list.append(Granulometry(dm=granulo["dm"], d30=granulo["d30"], d50=granulo["d50"], d90=granulo["d90"], d84tb=granulo["d84tb"], d84bs=granulo["d84bs"], Gr=granulo["Gr"]))
+        granulometry_list.append(Granulometry(**granulo)) #dm=granulo["dm"], d30=granulo["d30"], d50=granulo["d50"], d90=granulo["d90"], d84tb=granulo["d84tb"], d84bs=granulo["d84bs"], Gr=granulo["Gr"]))
     
     # hydrogram
     if args["LAVABRE"]:
@@ -88,7 +89,7 @@ def run_back(args, hydrau=None):
         y_max = [None for _ in range(len(z))]
     try:
         granulo_index = data[first_line.index('granulometry')]
-        granulo_index = [int(_)-1 for _ in granulo_index]
+        granulo_index = [int(i)-1 for i in granulo_index]
     except ValueError:
         print("WARNING : granulometry set on the first granulometry by default because there is no column 'granulometry' found")
         granulo_index = [0 for _ in range(len(z))]
@@ -145,9 +146,29 @@ def run_back(args, hydrau=None):
     i_upstream = x.index(min(x))
     QsIn = [transport_law.compute_Qs_formula(args["UPSTREAM_WIDTH"], granulometry_list[granulo_index[i_upstream]], Q[i], I) for i, ti in enumerate(t)]
 
+    # friction law
+    friction_law_list = ["Ferguson", "Manning-Strickler"]
+    if not(args["CRITICAL"]) and not(args["FRICTION_LAW"] in friction_law_list):
+        print(f"ERROR : critical set on false and unknown friction law : {args['FRICTION_LAW']}, it must be one of these : {friction_law_list}")
+        return
+
+    # boundary condition
+    cl_list = ["normal_depth", "critical_depth"]
+    if not(args["UPSTREAM_CONDITION"] in cl_list):
+        print("ERROR : UPSTREAM_CONDITION must be one of these : 'normal_depth'/'critical_depth' ")
+        return
+    if not(args["DOWNSTREAM_CONDITION"] in cl_list):
+        print("ERROR : DOWNSTREAM_CONDITION must be one of these : 'normal_depth'/'critical_depth' ")
+        return
+
     # result
     if hydrau == None:
-        result = profile.compute_event(Q, t, transport_law, sedimentogram=QsIn, backup=False, debug=False, method="ImprovedEuler", friction_law=args["FRICTION_LAW"], cfl=args["CFL"], critical=args["CRITICAL"])
+        
+        if args["PERF"]:
+            Performance.start() 
+        result = profile.compute_event(Q, t, transport_law, sedimentogram=QsIn, backup=False, debug=False, method="ImprovedEuler", friction_law=args["FRICTION_LAW"], cfl=args["SPEED_COEF"], critical=args["CRITICAL"], upstream_condition=args["UPSTREAM_CONDITION"], downstream_condition=args["DOWNSTREAM_CONDITION"], plot=True)
+        if args["PERF"]:
+            Performance.stop()
         try:
             os.chdir("./results")
         except FileNotFoundError:
@@ -160,7 +181,10 @@ def run_back(args, hydrau=None):
         except FileExistsError:
             pass
         os.chdir(f"./{e.year}_{e.month}_{e.day}_{e.hour}_{e.minute}_{e.second}")
-        
+
+        if args["PERF"]:
+            Performance.save_perf("./perf.txt")
+
         json.dump(args, open("./conf_reminder.json", 'w'), indent=6)
         step = args["BACKUP_TIME_STEP"]
         ani = result["animation"]
@@ -186,7 +210,7 @@ def run_back(args, hydrau=None):
             pass
         os.chdir("./txt_files")
         next_t = 0
-        column_name_list = ["x", "y", "z", "h"]
+        column_name_list = ["x", "h", "z", "H"]
         for i, ti in enumerate(t_list):
             if ti >= next_t:
                 next_t += step
@@ -194,9 +218,25 @@ def run_back(args, hydrau=None):
                 # save
                 data = [x, y_matrix[i], z_matrix[i], h_matrix[i]]
                 write_datafile(filename, column_name_list, data)
+
+        y_matrix_bis = [[y_matrix[i][xi] for i in range(len(t_list))] for xi in range(len(x))]
+        data = [x, [max(y_matrix_bis[i]) for i in range(len(x))], [t_list[y_matrix_bis[i].index(max(y_matrix_bis[i]))] for i in range(len(x))]]
+        column_name_list = ["x", "hmax", "tmax"]
+        write_datafile("hmax.txt", column_name_list, data)
+
+        z_matrix_bis = [[z_matrix[i][xi] for i in range(len(t_list))] for xi in range(len(x))]
+        data = [x, [max(z_matrix_bis[i]) for i in range(len(x))], [t_list[z_matrix_bis[i].index(max(z_matrix_bis[i]))] for i in range(len(x))]]
+        column_name_list = ["x", "zmax", "tmax"]
+        write_datafile("zmax.txt", column_name_list, data)
+
+        h_matrix_bis = [[h_matrix[i][xi] for i in range(len(t_list))] for xi in range(len(x))]
+        data = [x, [max(h_matrix_bis[i]) for i in range(len(x))], [t_list[h_matrix_bis[i].index(max(h_matrix_bis[i]))] for i in range(len(x))]]
+        column_name_list = ["x", "Hmax", "tmax"]
+        write_datafile("Hmax.txt", column_name_list, data)        
         
     else:
-        y_list = profile.compute_depth(hydrau, plot=True, method="ImprovedEuler", friction_law=args["FRICTION_LAW"])
+        # profile.plot()
+        y_list = profile.compute_depth(hydrau, plot=True, method="ImprovedEuler", friction_law=args["FRICTION_LAW"], upstream_condition=args["UPSTREAM_CONDITION"], downstream_condition=args["DOWNSTREAM_CONDITION"])
     plt.show()
 
     return

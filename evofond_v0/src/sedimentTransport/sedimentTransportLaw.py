@@ -27,6 +27,9 @@ class SedimentTransportLaw(ABC):
     def compute_Qs_formula(self, b, granulometry, Q, I): 
         pass
 
+    @abstractmethod
+    def compute_Qs_formula(self, b, granulometry, Q, I): 
+        pass
 
     # operators overloading
 

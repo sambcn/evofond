@@ -22,6 +22,13 @@ class Profile():
         self.__downstream = section_list[-1]
 
     def complete(self, dx):
+        """
+        Add new sections to the profile such that there is at least one section every dx in this interval.
+        This methods do not change upstream et downstream attributes.
+        It needs the section_list to be in a coherent state (see more details in setup_section_list method).
+        example : if dx=10 and there are no sections between x=5 and x=20 it will add a new section at x=12.5 (created by interpolation)
+        """
+
         x_0 = self.get_x_list()
         new_x = [x_0[0]]
         for i in range(len(x_0)-1):
@@ -59,6 +66,7 @@ class Profile():
         Add new sections to the profile between the starting_index and the ending_index, such that there is at least one section every dx in this interval.
         This methods do not change upstream et downstream attributes.
         It needs the section_list to be in a coherent state (see more details in setup_section_list method).
+        example : if dx=10 and there are no sections between x=5 and x=20 it will add a new section at x=15 (created by interpolation)
         """
         if ending_index==-1:
             ending_index = len(self.__section_list)-1
@@ -110,7 +118,7 @@ class Profile():
                     section.set_down_section(section_list[i+1])
 
     def copy(self):
-        """return a safe copy of this section"""
+        """return a safe copy of this profile"""
         section_list = []
         for s in self.__section_list:
             section_list.append(s.copy())
@@ -125,8 +133,10 @@ class Profile():
     # resolution methods
 
     @Performance.measure_perf
-    def compute_depth(self, Q, plot=False, hydraulic_jump_analysis=False, method="ImprovedEuler", friction_law="Ferguson", compare=None):
-        
+    def compute_depth(self, Q, plot=False, hydraulic_jump_analysis=False, method="ImprovedEuler", friction_law="Ferguson", compare=None, upstream_condition="normal_depth", downstream_condition="normal_depth"):
+        """
+        compute the water depth in the profile for a given water discharge Q
+        """
         method_set = {"Euler", "ImprovedEuler", "RungeKutta"}
         if not(method in method_set):
             print(f"WARNING : chosen method not in the available list : {method_set}, it has been set by default on ImprovedEuler")
@@ -134,8 +144,8 @@ class Profile():
 
         yc_list = self.get_yc_list(Q)
         y_list = yc_list[:]
-        y_list[0] = self.get_upstream_boundary_condition(Q, friction_law=friction_law)
-        y_list[-1] = self.get_downstream_boundary_condition(Q, friction_law=friction_law)
+        y_list[0] = self.get_upstream_boundary_condition(Q, friction_law=friction_law, upstream_condition=upstream_condition)
+        y_list[-1] = self.get_downstream_boundary_condition(Q, friction_law=friction_law, downstream_condition=downstream_condition)
         hs_list = [s.get_Hs(Q, y_list[i]) for i, s in enumerate(self.get_section_list())]
         hsc_list = [s.get_Hs(Q, yc_list[i]) for i, s in enumerate(self.get_section_list())]
         Fs_list = [s.get_Fs(Q, y_list[i]) for i, s in enumerate(self.get_section_list())]
@@ -148,6 +158,7 @@ class Profile():
         down_direction = True
 
         y_list_memory = y_list[:]
+        nb_loop = 0
         while i_current > 0 or (down_direction and i_current == 0):
             # print(f"start at x = {self.get_section(i_current).get_x()} toward {'down' if down_direction else 'up'} direction")
             
@@ -169,7 +180,7 @@ class Profile():
                 down_direction = False
                 i_memory_3 = i_memory_2
             else:
-                # i_current = i_memory_2
+                i_current = i_memory_2
                 update_flag = False
                 while i_current > 0:
                     current_section = self.get_section(i_current)
@@ -180,7 +191,8 @@ class Profile():
                         y_next = self.__compute_next_y(Q, current_section, next_section, y_list[i_current], hs_list[i_current], yc_list[i_current-1], supercritical=False, method=method, friction_law=friction_law)
                     hs_next = next_section.get_Hs(Q, y_next)
                     Fs_next = next_section.get_Fs(Q, y_next)
-                    if Fs_next > Fs_list[i_current-1]:
+                    Fs_current = Fs_list[i_current-1]
+                    if Fs_next > Fs_current:
                         # if hs_next + next_section.get_z() >= hs_list[i_current] + current_section.get_z():
                         if not(update_flag):
                             i_memory_1 = i_current-1
@@ -188,7 +200,7 @@ class Profile():
                         y_list[i_current-1] = y_next
                         hs_list[i_current-1] = hs_next
                         Fs_list[i_current-1] = Fs_next
-                    elif update_flag: # end of an updated section : we need to refresh supercritical computation
+                    if update_flag and (Fs_next <= Fs_current or i_current==1): # end of an updated section : we need to refresh supercritical computation
                         i_memory_2 = i_current-1
                         down_direction = True
                         if not(i_current-1 in hydraulic_index):
@@ -197,11 +209,12 @@ class Profile():
                         break
                     i_current -= 1
             
-            # print(f"stoped at x={self.get_section(i_current).get_x()}")
-            # self.plot(Q=Q, y=y_list, title="new profile")
-            # self.plot(Q=Q, y=y_list_memory, title="previous profile")
+            # print(f"stoped at x={self.get_section(i_current).get_x() if not(down_direction) else self.get_section(i_memory_2).get_x()}")
+            # self.plot(Q=Q, y=y_list, title=f"step {nb_loop+1}", friction_law=friction_law)
+            # self.plot(Q=Q, y=y_list_memory, title=f"step {nb_loop}", friction_law=friction_law)
             # y_list_memory = y_list[:]
             # plt.show()
+            # nb_loop += 1
 
         # y_list = yc_list
 
@@ -230,6 +243,9 @@ class Profile():
 
     @Performance.measure_perf
     def find_best_dt(self, Q, y_list, cfl=1):
+        """
+        find the time step which allows to get a Courant–Friedrichs–Lewy constant equal to cfl
+        """
         dt_list = []
         for i, s in enumerate(self.get_section_list()[:-1]):
             dx = s.get_down_section().get_x() - s.get_x()
@@ -241,7 +257,10 @@ class Profile():
     @Performance.measure_perf
     def update_bottom(self, Q, y, QsIn0, dt, law, plot=False, friction_law="Ferguson"):
         """
-        Q and dt are respectively the water discharge and the time step. 
+        Q = water discharge
+        y = list of water depth  for every section
+        QsIn0 = sediment discharge at the upstream section
+        dt = time step (how long last this step, used to compute volumes from discharges)
         Compute the sediment discharge at the downstream and change the attribute __z for every section
         """
         z0 = self.get_z_list()
@@ -270,7 +289,10 @@ class Profile():
 
         return QsIn
 
-    def compute_event(self, hydrogram, t_hydrogram, law, sedimentogram=None, backup=False, debug=False, method="ImprovedEuler", friction_law="Ferguson", cfl=1, critical=False):
+    def compute_event(self, hydrogram, t_hydrogram, law, sedimentogram=None, backup=False, debug=False, method="ImprovedEuler", friction_law="Ferguson", cfl=1, critical=False, upstream_condition="normal_depth", downstream_condition="normal_depth", plot=False):
+        """
+        main function of the class : compute an entire event and return the evolution of the profile
+        """
         start_computation = time()
         y_matrix = [] # list of the water depth during the event
         z_matrix = [self.get_z_list()] # list of the bottom height during the event
@@ -305,7 +327,7 @@ class Profile():
                 if critical:
                     y_list = self.get_yc_list(Q)
                 else:
-                    y_list = self.compute_depth(Q, method=method, friction_law=friction_law)
+                    y_list = self.compute_depth(Q, method=method, friction_law=friction_law, upstream_condition="normal_depth", downstream_condition="normal_depth")
             except Exception as e:
                 print("ERROR IN COMPUTING THIS EVENT : COULD NOT FINISH\n plotting the last state ...\n")
                 raise(e)
@@ -381,7 +403,7 @@ class Profile():
         axs[1].set(xlabel="x", ylabel="difference of height (m)")
         self.__plot_width_background(axs[0], label=False)
         self.__plot_width_background(axs[1])
-        fig0.legend()
+        fig0.legend(loc='lower right')
         fig0.set_size_inches(10.5, 9.5)
         if backup:
             print("saving result plot...")
@@ -411,7 +433,7 @@ class Profile():
         ax1.set_title("Water depth and bottom evolution")
         fig.set_size_inches(9.5, 5.5)
         self.__plot_width_background(ax1)
-        plt.legend()
+        plt.legend(loc='lower right')
         def animate(i): 
             y = y_matrix[i%(len(y_matrix))]
             z = z_matrix[i%(len(y_matrix))] # y_matrix because in case of error, there is one more element in z_matrix and we need y and z to be synchronized
@@ -550,24 +572,25 @@ class Profile():
             s += section.get_stored_volume()
         return s
 
-    def get_upstream_boundary_condition(self, Q, friction_law="Ferguson"):
+    def get_upstream_boundary_condition(self, Q, friction_law="Ferguson", upstream_condition="normal_depth"):
         s = self.get_upstream_section()
         s0 = s.get_S0(up_direction=False)
         yc = s.get_yc(Q)
-        if s0 <= 0:
+        if s0 <= 0 or upstream_condition=="critical_depth":
             return yc
         else:
             yn = s.get_yn(Q, friction_law=friction_law)
             return yn
 
-    def get_downstream_boundary_condition(self, Q, friction_law="Ferguson"):
+    def get_downstream_boundary_condition(self, Q, friction_law="Ferguson", downstream_condition="normal_depth"):
         s = self.get_downstream_section()
         s0 = s.get_S0(up_direction=True)
         yc = s.get_yc(Q)
-        if s0 <= 0:
+        if s0 <= 0 or downstream_condition=="critical_depth":
             return yc
         else:
-            return max(yc, s.get_yc(Q))
+            yn = s.get_yn(Q, friction_law=friction_law)
+            return yn
     
     def has_only_rectangular_section(self):
         for s in self.get_section_list():
@@ -648,7 +671,7 @@ class Profile():
 
     # plot methods
 
-    def plot(self, y=None, Q=None, title=None, compare=None, friction_law="Ferguson"):
+    def plot(self, y=None, Q=None, title=None, compare=None, friction_law="Ferguson", background=True):
         fig, ax1 = plt.subplots()
         x = self.get_x_list()
         x_maxi = max(x)
@@ -684,9 +707,10 @@ class Profile():
             ax2.plot(x, y_diff, color="tomato", label="relative error")
             ax2.plot(x, [0 for _ in range(len(x))], color="darkcyan", label="e=0")
             ax2.tick_params(axis='y', colors='tomato')
-        self.__plot_width_background(ax1)
+        if background:
+            self.__plot_width_background(ax1)
                         
-        plt.legend(loc=1)
+        plt.legend(loc=4)
         plt.title(title if title != None else self.get_name())
         return fig
 

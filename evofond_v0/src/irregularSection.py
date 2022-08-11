@@ -241,10 +241,6 @@ class IrregularSection:
         """Froude number"""
         wet_points = self.get_wet_section(y) if wet_points==None else wet_points
         return ((Q**2 * self.get_b(y, wet_points))/(G * self.get_S(y, wet_points)**3))**0.5
-    
-    def get_dP(self, y): # dP / dy : useful in case of a direct step method 
-        """derivative of wet perimeter (useful in case of a direct step method)"""
-        return derivative(self.get_P, y, dx=1e-2, n=1, order=3)
 
     def get_Fs(self, Q, y, wet_points=None):
         """specific force"""      
@@ -472,7 +468,7 @@ class IrregularSection:
         interpolated_section.__down_section = down_section
         interpolated_section.__is_downstream = False
         interpolated_section.__is_upstream = False
-        interpolated_section.__granulometry = up_section.__granulometry #TODO : interp for granulometry ?
+        interpolated_section.__granulometry = up_section.__granulometry # interp for granulometry ?
 
         return interpolated_section
 

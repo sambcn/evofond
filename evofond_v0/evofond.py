@@ -69,6 +69,9 @@ def main():
     return
 
 def ls():
+    """
+    print project list
+    """
     try:
         print("project list : ")
         print(os.listdir("./projects"))
@@ -76,6 +79,9 @@ def ls():
         print("no folder called 'projects', no projects found")
 
 def copy(project_name):
+    """
+    copy a given project called project_name
+    """
     try:
         os.chdir("./projects")
     except FileNotFoundError:
@@ -90,6 +96,9 @@ def copy(project_name):
 
 
 def delete(project_name):
+    """
+    delete a given project called prokect_name
+    """
     try:
         os.chdir("./projects")
     except FileNotFoundError:
@@ -103,6 +112,9 @@ def delete(project_name):
     return
 
 def clear():
+    """
+    clear log files (in the log folder)
+    """
     files_in_directory = os.listdir("./log")
     filtered_files = [file for file in files_in_directory if file.endswith(".log")]
     for file in filtered_files:
@@ -110,6 +122,9 @@ def clear():
         os.remove(path_to_file)
 
 def modify(project_name):
+    """
+    help users to make some classical modifications on
+    """
     try:
         os.chdir("./projects")
     except FileNotFoundError:
@@ -120,6 +135,7 @@ def modify(project_name):
     except FileNotFoundError:
         print(f"no project called {project_name}")
         return
+    print(f"[modify] profile chosen : {json.load(open(f'{project_name}_conf.json', 'r'))['PROFILE_PATH']}")
     print("[modify] the available modifications are the following : ")
     print(" 1 - [adjust elevation] you can add or substract a given height to all sections' elevation")
     print(" 2 - [adjust width] you can add or substract a given length to all sections' width")
@@ -141,6 +157,9 @@ def modify(project_name):
         set_data(json.load(open(f"{project_name}_conf.json", 'r'))["PROFILE_PATH"], 'granulometry', 1)
 
 def set_data(profile_path, data_name, default_value):
+    """
+    used by 'modify' function to create a new data column in the profile
+    """
     data = parse_datafile(profile_path)
     try:
         first_line = open(profile_path, 'r').readlines()[0].split()
@@ -172,6 +191,9 @@ def set_data(profile_path, data_name, default_value):
     return
 
 def adjust_data(profile_path, data_name):
+    """
+    used by 'modify' function to modify a given data column in the profile
+    """
     delta = input_float(f"[modify] please choose your delta {data_name} (m) : ", positive=False)
     data = parse_datafile(profile_path)
     try:
@@ -199,6 +221,9 @@ def adjust_data(profile_path, data_name):
 
 
 def quickstart():
+    """
+    function used by users to initialize a new project
+    """
     try:
         os.chdir("projects")
     except FileNotFoundError:
@@ -227,7 +252,7 @@ def quickstart():
     column_title = "x z b"
     if section == "trapezoidal":
         column_title += " s"
-    column_title += " zmin granulo"
+    # column_title += " zmin granulo"
     f.writelines(column_title)
     f.close()
     answer = str(input("[QS] [hydrogram] do you want to initialize a Lavabre hydrogram ? [yes/no] "))
@@ -316,11 +341,27 @@ def quickstart():
     else:
         conf_dict["FRICTION_LAW"]=None
 
-    answer = input_float("[QS] [CFL] choose a CFL value (please check documentation to check what this is, choose 1 in case you have no idea) : [float expected] ")
-    conf_dict["CFL"]=answer
+    if conf_dict["CRITICAL"]:
+        conf_dict["UPSTREAM_CONDITION"]="critical_depth"
+        conf_dict["DOWNSTREAM_CONDITION"]="critical_depth"
+    else:
+        answer = str(input("[QS] [Boundaries] choose your upstream boundary condition : [critical_depth/normal_depth] "))
+        answer = check_answer(answer, ["critical_depth", "normal_depth"])
+        conf_dict["UPSTREAM_CONDITION"]=answer
+        answer = str(input("[QS] [Boundaries] choose your downstream boundary condition : [critical_depth/normal_depth] "))
+        answer = check_answer(answer, ["critical_depth", "normal_depth"])
+        conf_dict["DOWNSTREAM_CONDITION"]=answer
+
+    answer = input_float("[QS] [SPEED_COEF] choose a SPEED_COEF value (please check documentation to check what this is, choose 1 in case you have no idea) : [float expected] ")
+    conf_dict["SPEED_COEF"]=answer
 
     answer = input_float("[QS] [RESULTS BACKUP] choose your time step for the results : [float answer expected (seconds)] ")
     conf_dict["BACKUP_TIME_STEP"]=answer
+
+    answer = str(input("[QS] [Perf] do you want to know the execution performance (it may make it last a little longer) ? : [yes/no] "))
+    answer = check_answer(answer, ["yes", "no"])
+    conf_dict["PERF"]=(answer=="yes")
+
 
     outfile = open(f"{project_name}_conf.json", 'w')
     json.dump(conf_dict, outfile, indent=6)
@@ -330,6 +371,9 @@ def quickstart():
     return
 
 def run(project_name, hydrau=False):
+    """
+    run a given project called project_name. If hydrau==True, it will only compute water depth and not the entire simulation.
+    """
     try:
         os.chdir("./projects")
     except FileNotFoundError:

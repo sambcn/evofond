@@ -13,6 +13,9 @@ class Performance:
 
     @staticmethod
     def get_perf_table():
+        """
+        return the table of the stored performances
+        """
         if Performance.time_end == None:
             print("automatic stop of perf measure.")
             Performance.time_end = t.time()
@@ -25,8 +28,6 @@ class Performance:
 
     @staticmethod
     def print_perf():
-        # table = PrettyTable(['method name', '% of the execution time', 'total time spent', 'number of call', 'mean time spent by call'])
-
         ts = Performance.time_start
         te = Performance.time_end
         if ts == None:
@@ -59,6 +60,9 @@ class Performance:
 
     @staticmethod
     def measure_perf(func):
+        """
+        decorator home-made in order to store time spent in the decorated method during the full execution
+        """
         def wrapper(*args, **kargs):
             if Performance.time_start == None:
                 return func(*args, **kargs)
