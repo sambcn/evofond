@@ -51,7 +51,7 @@ class RectangularSection(IrregularSection):
         Qs_out = min(Qs_out, Qs_out_max)
         
         if self.is_downstream():
-            Qs_out = max(Qs_in, Qs_out) # Sediments can not stay on the last section. 
+            Qs_out = Qs_in # max(Qs_in, Qs_out) # Sediments can not stay on the last section. 
         
         z_new = (self.get_z() + (Qs_in-Qs_out)*dt/S)
 

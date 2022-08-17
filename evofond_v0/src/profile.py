@@ -157,8 +157,8 @@ class Profile():
         i_memory_3 = self.get_nb_section()-1        
         down_direction = True
 
-        y_list_memory = y_list[:]
-        nb_loop = 0
+        # y_list_memory = y_list[:]
+        # nb_loop = 0
         while i_current > 0 or (down_direction and i_current == 0):
             # print(f"start at x = {self.get_section(i_current).get_x()} toward {'down' if down_direction else 'up'} direction")
             
@@ -310,7 +310,7 @@ class Profile():
         if not(method in method_set):
             print(f"WARNING : chosen method not in the available list : {method_set}, it has been set by default on ImprovedEuler")
             method = "ImprovedEuler"
-        log_string = f"[backup={backup}, debug={debug}, method={method}, friction_law={friction_law}, cfl={cfl}, critical={critical}]"
+        log_string = f"[backup={backup}, debug={debug}, method={method}, friction_law={friction_law}, speed_coef={cfl}, critical={critical}]"
         if debug:
             profile_list = [initial_profile]
             current_stored_volume = stored_volume_start
@@ -340,11 +340,11 @@ class Profile():
 
             y_matrix.append(y_list)
             h_matrix.append([s.get_H(Q, y_list[i]) for i, s in enumerate(self.__section_list)])
-            dt_opti = self.find_best_dt(Q, y_list, cfl=cfl)
-            t_aux = list(np.sort(abs(np.array(t_hydrogram) - t)))
-            dt_hydrogram = t_aux[1] + t_aux[0]
+            dt = self.find_best_dt(Q, y_list, cfl=cfl)
+            # t_aux = list(np.sort(abs(np.array(t_hydrogram) - t)))
+            # dt_hydrogram = t_aux[1] + t_aux[0]
             # print(f"dt_opti={dt_opti:.3f}, dt_hydrogram={dt_hydrogram:.3f}")
-            dt = min(dt_hydrogram, dt_opti)
+            # dt = min(dt_hydrogram, dt_opti)
             if t >= next_t_print: 
                 print(f"{t:.3f}/{t_hydrogram[-1]} (dt={dt:.3f}s) "+log_string)
                 print(f"current_computation_time = {time_to_string(time()-start_computation)}")
@@ -385,6 +385,8 @@ class Profile():
         x = self.get_x_list()
         x_max = max(x)
         x = [x_max-xi for xi in x]
+        if not(plot):
+            return None
 
         title = 'Sediment transport :\n' + \
             f'Volume gone in :  {V_in}\n' + \
@@ -407,7 +409,7 @@ class Profile():
         fig0.set_size_inches(10.5, 9.5)
         if backup:
             print("saving result plot...")
-            fig0.savefig("./results/result.png", dpi=400, format="png")
+            fig0.savefig("./result.png", dpi=400, format="png")
             print("plot saved.")
 
         if debug:
@@ -433,7 +435,7 @@ class Profile():
         ax1.set_title("Water depth and bottom evolution")
         fig.set_size_inches(9.5, 5.5)
         self.__plot_width_background(ax1)
-        plt.legend(loc='lower right')
+        plt.legend()
         def animate(i): 
             y = y_matrix[i%(len(y_matrix))]
             z = z_matrix[i%(len(y_matrix))] # y_matrix because in case of error, there is one more element in z_matrix and we need y and z to be synchronized
@@ -451,7 +453,7 @@ class Profile():
             print("saving animation...")
             print(f"number of frames : {len(frames)}")
             t0 = time()
-            ani.save("./results/animation.mp4", fps=len(frames)/time_ani, dpi=150)
+            ani.save("./animation.mp4", fps=len(frames)/time_ani, dpi=150)
             print(f"animation saved ({time()-t0}).")
         if debug:
             print("[DEBUG] STARTING DEBUG")

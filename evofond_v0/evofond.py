@@ -143,7 +143,7 @@ def modify(project_name):
     print(" 4 - [set minimal heigt] initialize minimal height data (default value of zmin will be z)")
     print(" 5 - [set granulometry to section] initialize granulometry association data (default granulometry will be granulometry_1)")
     print(f"[modify] for any other modification, you can check the {project_name}_conf.json file and change configuration on your own (be careful..) ")
-    answer = print("[modify] write the number of the target modification : ")
+    answer = input("[modify] write the number of the target modification : ")
     answer = int(check_answer(answer, [f"{i}" for i in range(1, 6)]))
     if answer == 1:
         adjust_data(json.load(open(f"{project_name}_conf.json", 'r'))["PROFILE_PATH"], 'z')
@@ -271,6 +271,7 @@ def quickstart():
         conf_dict["ALPHA"]=answer
         answer = input_float("[QS] [hydrogram] [Lavabre]  choose your time step ? [float answer expected] ")
         conf_dict["DT"]=answer
+        conf_dict["HYDROGRAM_PATH"]=None
     else:
         conf_dict["DURATION"] = None
         conf_dict["TM"] = None
@@ -286,9 +287,9 @@ def quickstart():
     answer = str(input("[QS] [sediment transport] which sediment transport law do you want ? [Rickenmann1990/Rickenmann1991/Lefort2015/LefortSogreah1991/Meunier1989/MeyerPeter1948/PitonRecking2017/Piton2016] "))
     answer = check_answer(answer, ["Rickenmann1990", "Rickenmann1991", "Lefort2015", "LefortSogreah1991", "Meunier1989", "MeyerPeter1948", "PitonRecking2017", "Piton2016"])
     conf_dict["TRANSPORT_LAW"]=answer
-    answer = input_float("[QS] [sediment transport] \t \t chose an upstream slope for sediment transport : [float expected (%)] ")
+    answer = input_float("[QS] [sediment transport] chose an upstream slope for sediment transport : [float expected (%)] ")
     conf_dict["UPSTREAM_SLOPE"]=answer    
-    answer = input_float("[QS] [sediment transport] \t \t chose an upstream width for sediment transport : [float expected (m)] ")
+    answer = input_float("[QS] [sediment transport] chose an upstream width for sediment transport : [float expected (m)] ")
     conf_dict["UPSTREAM_WIDTH"]=answer
 
     granulometry_files = []
@@ -320,7 +321,8 @@ def quickstart():
         answer = str(input("[QS] [sediment transport] [granulometry] do you want to initialize a new granulometry ? [yes/no]"))
         answer = check_answer(answer, ["yes", "no"])
         new_granulo = (answer == "yes")
-    print("[QS] [sediment transport] [granulometry] the first granulometry will be by default the granulometry of all sections, use -m option to change this")
+    if len(granulometry_files) > 1:
+        print("[QS] [sediment transport] [granulometry] the first granulometry will be by default the granulometry of all sections, use -m option to change this")
     conf_dict["GRANULOMETRY_FILES"] = granulometry_files
     answer = str(input("[QS] [interpolation] do you want to interpolate your profile ? [yes/no]"))
     answer = check_answer(answer, ["yes", "no"])
